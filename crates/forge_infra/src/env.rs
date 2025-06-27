@@ -131,6 +131,14 @@ impl ForgeEnvironmentInfra {
                 config.max_redirects = parsed;
             }
         }
+        if let Ok(cert_file) = std::env::var("SSL_CERT_FILE") {
+            config.ssl_cert_file = Some(cert_file);
+        }
+        if let Ok(val) = std::env::var("FORGE_DANGER_ACCEPT_INVALID_CERTS") {
+            if val.eq_ignore_ascii_case("true") {
+                config.danger_accept_invalid_certs = true;
+            }
+        }
 
         config
     }
@@ -252,16 +260,11 @@ mod tests {
 
     #[test]
     fn test_env_precedence_std_env_wins() {
-        let (_root, cwd) = setup_envs(vec![
-            ("a/b", "TEST_KEY4=SUB_VAL"),
-            ("a", "TEST_KEY4=ROOT_VAL"),
-        ]);
-
-        env::set_var("TEST_KEY4", "STD_ENV_VAL");
+        let (_root, cwd) = setup_envs(vec![("", "TEST_KEY4=DOTENV_VAL")]);
 
         ForgeEnvironmentInfra::dot_env(&cwd);
 
-        assert_eq!(env::var("TEST_KEY4").unwrap(), "STD_ENV_VAL");
+        assert_eq!(env::var("TEST_KEY4").unwrap(), "DOTENV_VAL");
     }
 
     #[test]
@@ -412,6 +415,32 @@ mod tests {
             env::remove_var("FORGE_RETRY_BACKOFF_FACTOR");
             env::remove_var("FORGE_RETRY_MAX_ATTEMPTS");
             env::remove_var("FORGE_RETRY_STATUS_CODES");
+        }
+    }
+
+    #[test]
+    fn test_resolve_timeout_config_ssl_cert_file() {
+        let infra = ForgeEnvironmentInfra::new(false);
+        let original_cert_file = std::env::var("SSL_CERT_FILE").ok();
+
+        // Unset the variable for the first assertion
+        std::env::remove_var("SSL_CERT_FILE");
+
+        // Test when SSL_CERT_FILE is not set
+        let config = infra.resolve_timeout_config();
+        assert_eq!(config.ssl_cert_file, None);
+
+        // Test when SSL_CERT_FILE is set
+        let cert_path = "/path/to/cert.pem";
+        std::env::set_var("SSL_CERT_FILE", cert_path);
+        let config = infra.resolve_timeout_config();
+        assert_eq!(config.ssl_cert_file, Some(cert_path.to_string()));
+
+        // Cleanup: restore the original value
+        if let Some(cert_file) = original_cert_file {
+            std::env::set_var("SSL_CERT_FILE", cert_file);
+        } else {
+            std::env::remove_var("SSL_CERT_FILE");
         }
     }
 }

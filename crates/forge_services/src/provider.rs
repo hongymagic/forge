@@ -14,14 +14,14 @@ pub struct ForgeProviderService {
 }
 
 impl ForgeProviderService {
-    pub fn new<F: EnvironmentInfra>(infra: Arc<F>) -> Self {
+    pub fn new<F: EnvironmentInfra>(infra: Arc<F>) -> Result<Self> {
         let env = infra.get_environment();
         let provider = env.provider.clone();
         let retry_config = env.retry_config.clone();
         let version = env.version();
-        Self {
-            client: Arc::new(Client::new(provider, retry_config, version, env.http).unwrap()),
-        }
+        Ok(Self {
+            client: Arc::new(Client::new(provider, retry_config, version, env.http)?),
+        })
     }
 }
 

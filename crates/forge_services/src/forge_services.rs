@@ -58,11 +58,11 @@ impl<
             + WalkerInfra,
     > ForgeServices<F>
 {
-    pub fn new(infra: Arc<F>) -> Self {
+    pub fn new(infra: Arc<F>) -> anyhow::Result<Self> {
         let mcp_manager = Arc::new(ForgeMcpManager::new(infra.clone()));
         let mcp_service = Arc::new(ForgeMcpService::new(mcp_manager.clone(), infra.clone()));
         let template_service = Arc::new(ForgeTemplateService::new(infra.clone()));
-        let provider_service = Arc::new(ForgeProviderService::new(infra.clone()));
+        let provider_service = Arc::new(ForgeProviderService::new(infra.clone())?);
         let attachment_service = Arc::new(ForgeChatRequest::new(infra.clone()));
 
         let conversation_service = Arc::new(ForgeConversationService::new(mcp_service.clone()));
@@ -79,7 +79,7 @@ impl<
         let fetch_service = Arc::new(ForgeFetch::new());
         let followup_service = Arc::new(ForgeFollowup::new(infra.clone()));
         let env_service = Arc::new(ForgeEnvironmentService::new(infra));
-        Self {
+        Ok(Self {
             conversation_service,
             attachment_service,
             provider_service,
@@ -98,7 +98,7 @@ impl<
             followup_service,
             mcp_service,
             env_service,
-        }
+        })
     }
 }
 

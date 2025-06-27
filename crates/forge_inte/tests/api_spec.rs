@@ -39,7 +39,7 @@ impl Fixture {
     /// Get the API service, panicking if not validated
     fn api(&self) -> impl API {
         // NOTE: In tests the CWD is not the project root
-        ForgeAPI::init(true)
+        ForgeAPI::init(true).expect("Failed to initialize API in test")
     }
 
     /// Get model response as text

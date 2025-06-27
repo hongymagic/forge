@@ -25,10 +25,10 @@ impl<A, F> ForgeAPI<A, F> {
 }
 
 impl ForgeAPI<ForgeServices<ForgeInfra>, ForgeInfra> {
-    pub fn init(restricted: bool) -> Self {
+    pub fn init(restricted: bool) -> Result<Self> {
         let infra = Arc::new(ForgeInfra::new(restricted));
-        let app = Arc::new(ForgeServices::new(infra.clone()));
-        ForgeAPI::new(app, infra)
+        let app = Arc::new(ForgeServices::new(infra.clone())?);
+        Ok(ForgeAPI::new(app, infra))
     }
 }
 

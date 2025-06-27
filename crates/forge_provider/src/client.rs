@@ -34,14 +34,28 @@ impl Client {
         version: impl ToString,
         timeout_config: HttpConfig,
     ) -> Result<Self> {
-        let client = reqwest::Client::builder()
+        let client_builder = reqwest::Client::builder()
             .read_timeout(std::time::Duration::from_secs(timeout_config.read_timeout))
             .pool_idle_timeout(std::time::Duration::from_secs(
                 timeout_config.pool_idle_timeout,
             ))
             .pool_max_idle_per_host(timeout_config.pool_max_idle_per_host)
-            .redirect(Policy::limited(timeout_config.max_redirects))
-            .build()?;
+            .redirect(Policy::limited(timeout_config.max_redirects));
+
+        let client_builder = if timeout_config.danger_accept_invalid_certs {
+            client_builder.danger_accept_invalid_certs(true)
+        } else if let Some(cert_file) = &timeout_config.ssl_cert_file {
+            let cert_data = std::fs::read(cert_file)
+                .with_context(|| format!("Failed to read SSL certificate file: {}", cert_file))?;
+            let cert = reqwest::Certificate::from_pem(&cert_data).with_context(|| {
+                format!("Failed to parse SSL certificate from file: {}", cert_file)
+            })?;
+            client_builder.add_root_certificate(cert)
+        } else {
+            client_builder
+        };
+
+        let client = client_builder.build()?;
 
         let inner = match &provider {
             Provider::OpenAI { url, .. } => InnerClient::OpenAICompat(

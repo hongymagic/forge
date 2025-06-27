@@ -52,10 +52,10 @@ impl From<PartialEvent> for Event {
     }
 }
 
-pub struct UI<A, F: Fn() -> A> {
+pub struct UI<A, F> {
     markdown: MarkdownFormat,
     state: UIState,
-    api: Arc<F::Output>,
+    api: Arc<A>,
     new_api: Arc<F>,
     console: Console,
     command: Arc<ForgeCommandManager>,
@@ -65,7 +65,7 @@ pub struct UI<A, F: Fn() -> A> {
     _guard: forge_tracker::Guard,
 }
 
-impl<A: API, F: Fn() -> A> UI<A, F> {
+impl<A: API, F: Fn() -> Result<A>> UI<A, F> {
     /// Writes a line to the console output
     /// Takes anything that implements ToString trait
     fn writeln<T: ToString>(&mut self, content: T) -> anyhow::Result<()> {
@@ -82,7 +82,7 @@ impl<A: API, F: Fn() -> A> UI<A, F> {
 
     // Handle creating a new conversation
     async fn on_new(&mut self) -> Result<()> {
-        self.api = Arc::new((self.new_api)());
+        self.api = Arc::new((self.new_api)()?);
         self.init_state(false).await?;
         banner::display()?;
         Ok(())
@@ -145,7 +145,7 @@ impl<A: API, F: Fn() -> A> UI<A, F> {
 
     pub fn init(cli: Cli, f: F) -> Result<Self> {
         // Parse CLI arguments first to get flags
-        let api = Arc::new(f());
+        let api = Arc::new(f()?);
         let env = api.environment();
         let command = Arc::new(ForgeCommandManager::default());
         Ok(Self {
